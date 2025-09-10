@@ -1,10 +1,10 @@
 {
-  "name": "Doctor's weapon",
-  "short_name": "Doctor's weapon",
+  "name": "Doctor's Weapon",
+  "short_name": "Doctor's Weapon",
   "start_url": "/my-dictionary/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#004085",
   "icons": [
     {
       "src": "logo192.png",
@@ -19,3 +19,4 @@
   ]
 
 }
+
