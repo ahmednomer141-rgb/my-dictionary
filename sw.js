@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qamoosi-cache-v1';
+const CACHE_NAME = 'qamoosi-cache-v1.1';
 const urlsToCache = [
   '/',
   '/qamoosi.html',
@@ -37,3 +37,4 @@ self.addEventListener('activate', (event) => {
     })
   );
 });
+
