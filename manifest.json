@@ -1,7 +1,7 @@
 {
   "name": "Doctor's weapon",
   "short_name": "Doctor's weapon",
-  "start_url": ".",
+  "start_url": "/my-dictionary/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
@@ -17,4 +17,5 @@
       "type": "image/png"
     }
   ]
+
 }
