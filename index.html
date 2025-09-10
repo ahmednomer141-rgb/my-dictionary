@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Doctor's Weapon</title>
     <link rel="manifest" href="manifest.json">
-    <script src="tesseract.min.js"></script> <!-- تأكد من تحميل tesseract.js@4.1.6 أو أحدث محلياً لتحسين الدقة؛ يمكن استخدام CDN للاختبار: https://unpkg.com/tesseract.js@4.1.6/dist/tesseract.min.js -->
+    <script src="tesseract.min.js"></script> <!-- تأكد من وجوده محليًا -->
     
     <!-- Google Analytics (G-9MRVJ9QFD0) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-9MRVJ9QFD0"></script>
@@ -384,30 +384,30 @@
         let stream;
         let torchOn = false; // متغير لتتبع حالة الفلاش
 
-        // تحقق من تحميل Tesseract (حل جذري للخطأ "Tesseract is not defined")
+        // تحقق من تحميل Tesseract مع معالجة أخطاء
         if (typeof Tesseract === 'undefined') {
-            console.error('Tesseract لم يتم تحميله. تأكد من وجود الملف في نفس المجلد وتشغيل عبر خادم محلي.');
-            alert('خطأ: Tesseract غير متوفر. تأكد من وجود tesseract.min.js في نفس المجلد، وشغل الملف عبر Live Server في VS Code. إذا استمر الخطأ، جرب إعادة تحميل الصفحة أو استخدام CDN.');
+            console.error('Tesseract لم يتم تحميله. تأكد من وجود tesseract.min.js في المجلد.');
+            alert('خطأ: Tesseract غير متوفر. تأكد من وجود tesseract.min.js، وشغل عبر Live Server.');
         }
 
-        // دالة جديدة لإخفاء وتنظيف الجدول (تستخدم في الأحداث المطلوبة)
+        // دالة إخفاء وتنظيف الجدول
         function clearTables() {
             translationTable.style.display = 'none';
-            translationsTbody.innerHTML = '';  // تنظيف المحتوى للجولة الجديدة
+            translationsTbody.innerHTML = '';
         }
 
-        // دالة عرض نتائج البحث اليدوي (مع إخفاء الجدول عند البحث الجديد، وعرض زر النطق)
+        // دالة عرض نتائج البحث
         function showTranslation(entry, fromOCR = false) {
-            if (!fromOCR) clearTables();  // إخفاء الجدول من OCR السابق إلا إذا كان من OCR
+            if (!fromOCR) clearTables();
             fullEnglish.textContent = entry[1];
             arabicTranslate.textContent = entry[2];
             pronunciation.textContent = entry[3];
             resultDisplay.style.display = 'block';
-            speakBtn.style.display = 'inline-block'; // عرض زر النطق
-            suggestionsList.innerHTML = '';  // إغلاق الاقتراحات بعد الاختيار
+            speakBtn.style.display = 'block'; // عرض الزر (غيرت إلى block للتوافق)
+            suggestionsList.innerHTML = '';
         }
 
-        // عرض اقتراحات البحث (تعديل لعرض كل الكلمات التي تبدأ بالحرف، مرتبة أبجديًا، مع رسالة لطيفة)
+        // عرض اقتراحات البحث
         searchInput.addEventListener('keyup', displaySuggestions);
         searchInput.addEventListener('focus', displaySuggestions);
 
@@ -419,18 +419,16 @@
                 return;
             }
 
-            // جمع الكلمات التي تبدأ بالحرف (من العمود الأول)
             const results = dictionaryData
                 .filter(entry => entry[0].toLowerCase().startsWith(query))
-                .map(entry => entry[0]) // استخراج الكلمة النقية
-                .sort(); // ترتيب أبجدي
+                .map(entry => entry[0])
+                .sort();
 
             if (results.length > 0) {
                 results.forEach(word => {
                     const li = document.createElement('li');
                     li.textContent = word;
                     li.addEventListener('click', () => {
-                        // البحث عن الإدخال الكامل عند النقر
                         const entry = dictionaryData.find(e => e[0].toLowerCase() === word.toLowerCase());
                         if (entry) showTranslation(entry);
                     });
@@ -444,21 +442,19 @@
             }
         }
 
-        // تقنيات بحث متقدمة (مثل Google Translate) مع تنظيف الرموز - بقيت كما هي لدعم OCR
+        // دالة البحث المتقدم
         function advancedSearch(phrase) {
-            // تنظيف متقدم: إزالة ()، []، =، -، (o)، وأي نصوص داخلية
             const cleanPhrase = phrase.toLowerCase()
-                .replace(/\([^\)]*\)/g, '') // إزالة أي شيء داخل ()
-                .replace(/\[[^\]]*\]/g, '') // إزالة أي شيء داخل []
-                .replace(/=.*$/, '') // إزالة أي شيء بعد =
-                .replace(/[-/]/g, '') // إزالة - أو /
-                .replace(/\s+/g, ' ') // تقليم فراغات
+                .replace(/\([^\)]*\)/g, '')
+                .replace(/\[[^\]]*\]/g, '')
+                .replace(/=.*$/, '')
+                .replace(/[-/]/g, '')
+                .replace(/\s+/g, ' ')
                 .trim();
 
             let bestMatch = null;
             let bestSimilarity = 0;
 
-            // 1. مطابقة دقيقة بعد التنظيف
             for (const entry of dictionaryData) {
                 const cleanEntry = entry[0].toLowerCase()
                     .replace(/\([^\)]*\)/g, '')
@@ -471,29 +467,16 @@
                 if (cleanEntry === cleanPhrase) {
                     return { match: entry, similarity: 100 };
                 }
-            }
-
-            // 2. Fuzzy Matching مع Levenshtein Distance (مرنة أكثر)
-            for (const entry of dictionaryData) {
-
-const cleanEntry = entry[0].toLowerCase()
-                    .replace(/\([^\)]*\)/g, '')
-                    .replace(/\[[^\]]*\]/g, '')
-                    .replace(/=.*$/, '')
-                    .replace(/[-/]/g, '')
-                    .replace(/\s+/g, ' ')
-                    .trim();
 
                 const distance = levenshteinDistance(cleanPhrase, cleanEntry);
                 const similarity = (1 - distance / Math.max(cleanPhrase.length, cleanEntry.length)) * 100;
-                if (similarity > bestSimilarity && similarity >= 75) { // خفضت الحد إلى 75% لمرونة أكبر مع التنظيف
+                if (similarity > bestSimilarity && similarity >= 75) {
                     bestSimilarity = similarity;
                     bestMatch = entry;
                 }
             }
             if (bestMatch) return { match: bestMatch, similarity: bestSimilarity };
 
-            // 3. Stemming (جذور الكلمات)
             const stemmedPhrase = simpleStem(cleanPhrase.split(' ')).join(' ');
             for (const entry of dictionaryData) {
                 const cleanEntry = entry[0].toLowerCase()
@@ -509,7 +492,6 @@ const cleanEntry = entry[0].toLowerCase()
                 }
             }
 
-            // 4. N-gram Matching (جزئي)
             const ngramsPhrase = generateNgrams(cleanPhrase, 3);
             for (const entry of dictionaryData) {
                 const cleanEntry = entry[0].toLowerCase()
@@ -529,7 +511,6 @@ const cleanEntry = entry[0].toLowerCase()
             }
             if (bestMatch) return { match: bestMatch, similarity: bestSimilarity };
 
-            // 5. Permutations (إعادة ترتيب)
             const words = cleanPhrase.split(' ');
             const permutations = generatePermutations(words);
             for (const perm of permutations) {
@@ -576,7 +557,7 @@ const cleanEntry = entry[0].toLowerCase()
             return matrix[b.length][a.length];
         }
 
-        // دالة Stemming بسيطة (Porter-like)
+        // دالة Stemming بسيطة
         function simpleStem(words) {
             return words.map(word => word.replace(/ing$|ed$|s$/, ''));
         }
@@ -590,11 +571,199 @@ const cleanEntry = entry[0].toLowerCase()
             return ngrams;
         }
 
-        // دالة Permutations (إعادة ترتيب)
+        // دالة Permutations (تصحيح الدالة المقطوعة)
         function generatePermutations(arr) {
             if (arr.length <= 1) return [arr];
             const result = [];
             for (let i = 0; i < arr.length; i++) {
                 const rest = generatePermutations(arr.slice(0, i).concat(arr.slice(i + 1)));
                 for (let perm of rest) {
-                    result.push([arr[i
+                    result.push([arr[i]].concat(perm));
+                }
+            }
+            return result;
+        }
+
+        // ميزة الكاميرا
+        cameraBtn.addEventListener('click', async () => {
+            clearTables();
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                captureBtn.style.display = 'block';
+                cameraBtn.style.display = 'none';
+
+                const track = stream.getVideoTracks()[0];
+                if (track.getCapabilities && track.getCapabilities().torch) {
+                    torchButton.style.display = 'block';
+                }
+
+                video.addEventListener('click', (event) => {
+                    if (track.getCapabilities && track.getCapabilities().focusMode) {
+                        const rect = video.getBoundingClientRect();
+                        const x = (event.clientX - rect.left) / rect.width;
+                        const y = (event.clientY - rect.top) / rect.height;
+                        track.applyConstraints({ advanced: [{ focusMode: 'manual', pointsOfInterest: [{ x, y }] }] });
+                    }
+                });
+            } catch (error) {
+                alert('خطأ في الوصول إلى الكاميرا: ' + error.message);
+            }
+        });
+
+        // تبديل الفلاش
+        function toggleTorch() {
+            const track = stream.getVideoTracks()[0];
+            torchOn = !torchOn;
+            track.applyConstraints({ advanced: [{ torch: torchOn }] });
+        }
+
+        captureBtn.addEventListener('click', async () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const imageDataUrl = canvas.toDataURL('image/png');
+
+            stream.getTracks().forEach(track => track.stop());
+            video.style.display = 'none';
+            captureBtn.style.display = 'none';
+            cameraBtn.style.display = 'block';
+            torchButton.style.display = 'none';
+
+            loading.style.display = 'block';
+            loadingMessage.textContent = 'جاري تحميل الصورة...';
+            await processImage(imageDataUrl);
+        });
+
+        // ميزة المعرض
+        galleryBtn.addEventListener('click', () => {
+            clearTables();
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    loading.style.display = 'block';
+                    loadingMessage.textContent = 'جاري تحميل الصورة...';
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        await processImage(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        });
+
+        // معالجة الصورة مع OCR
+        async function processImage(imageDataUrl) {
+            try {
+                loadingMessage.textContent = 'جاري استخراج العبارات (OCR متقدم)...';
+
+                const worker = await Tesseract.createWorker({
+                    langPath: './tessdata', // مسار النماذج offline
+                    corePath: './tesseract/tesseract-core.wasm', // مسار WASM offline
+                    workerPath: 'https://unpkg.com/tesseract.js@4.1.6/dist/worker.min.js' // يمكن تنزيله محليًا إذا أردت
+                });
+
+                await worker.load();
+                await worker.loadLanguage('eng+ara');
+                await worker.initialize('eng+ara');
+                await worker.setParameters({
+                    tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+                    tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
+                    user_defined_dpi: '300',
+                    preserve_interword_spaces: '1',
+                });
+
+                const { data: { text } } = await worker.recognize(imageDataUrl);
+                await worker.terminate();
+
+                const extractedPhrases = text.split(/\n|\.|\,|\;/).filter(phrase => phrase.trim() !== '');
+
+                loadingMessage.textContent = 'جاري البحث المتقدم في القاموس...';
+                translationsTbody.innerHTML = '';
+                extractedPhrases.forEach(phrase => {
+                    const { match } = advancedSearch(phrase.trim());
+                    const tr = document.createElement('tr');
+                    const speakBtnCell = document.createElement('td');
+                    const speakBtnRow = document.createElement('button');
+                    speakBtnRow.className = 'speak-row-btn';
+                    speakBtnRow.textContent = 'نطق';
+                    speakBtnRow.addEventListener('click', () => speakText(phrase.trim(), true));
+                    speakBtnCell.appendChild(speakBtnRow);
+
+                    if (match) {
+                        tr.innerHTML = `
+                            <td>${phrase.trim()}</td>
+                            <td>${match[2]}</td>
+                        `;
+                        tr.appendChild(speakBtnCell);
+                    } else {
+                        tr.innerHTML = `
+                            <td>${phrase.trim()}</td>
+                            <td>غير موجودة</td>
+                        `;
+                        tr.appendChild(speakBtnCell);
+                    }
+                    translationsTbody.appendChild(tr);
+                });
+                translationTable.style.display = 'block';
+
+                loading.style.display = 'none';
+            } catch (error) {
+                loading.style.display = 'none';
+                alert('خطأ في OCR: ' + error.message + '\nتأكد من الملفات offline أو جرب صورة أخرى.');
+            }
+        }
+
+        // دالة النطق
+        function speakText(text, isFromTable = false) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+
+                const voices = speechSynthesis.getVoices();
+                const highQualityVoice = voices.find(voice => voice.name.includes('Google') || voice.name.includes('Microsoft') || voice.name === 'Samantha');
+                if (highQualityVoice) {
+                    utterance.voice = highQualityVoice;
+                }
+
+                speechSynthesis.speak(utterance);
+
+                utterance.onend = () => {
+                    if (!navigator.onLine && !isFromTable) {
+                        alert('النطق أفضل مع الإنترنت للأصوات الواقعية.');
+                    }
+                };
+            } else {
+                alert('متصفحك لا يدعم النطق. جرب Chrome.');
+            }
+        }
+
+        speakBtn.addEventListener('click', () => {
+            speakText(fullEnglish.textContent);
+        });
+
+        window.speechSynthesis?.getVoices(); // تحميل الأصوات مسبقًا
+
+        document.addEventListener('click', function(event) {
+            if (!searchInput.contains(event.target)) {
+                suggestionsList.innerHTML = '';
+            }
+        });
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('Service Worker Registered'))
+                .catch((error) => console.log('Registration failed:', error));
+        }
+    </script>
+</body>
+</html>
