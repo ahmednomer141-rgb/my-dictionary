@@ -1,7 +1,7 @@
 const CACHE_NAME = 'qamoosi-cache-v1.1.1';
 const urlsToCache = [
   '/',
-  '/qamoosi.html',  // غير هذا إلى اسم ملف HTML الرئيسي إذا لزم (مثل index.html)
+  '/index.html',  // غير هذا إلى اسم ملف HTML الرئيسي إذا لزم (مثل index.html)
   '/tesseract.min.js',  // إذا نزلتها محليًا
   '/manifest.json',
   '/icon-192.png',
@@ -10,9 +10,8 @@ const urlsToCache = [
   
   // المسارات الجديدة لـ Tesseract (للعمل offline)
   '/tessdata/eng.traineddata',  // نموذج الإنجليزية المدرب (من tessdata_best)
-  '/tessdata/ara.traineddata',  // نموذج العربية المدرب (من tessdata_best)
   '/tesseract/tesseract-core.wasm'  // الملف الأساسي لـ Tesseract
-  // إذا كان لديك worker.min.js، أضفه هنا: '/tesseract/worker.min.js'
+  '/tesseract/worker.min.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -43,4 +42,5 @@ self.addEventListener('activate', (event) => {
     })
   );
 });
+
 
