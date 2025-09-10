@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qamoosi-cache-v2.0';
+const CACHE_NAME = 'qamoosi-cache-v1.1.1.1'; // إصدار جديد لتحديث الـcache
 const urlsToCache = [
   './',
   './index.html',
