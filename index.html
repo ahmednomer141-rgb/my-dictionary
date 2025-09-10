@@ -435,21 +435,41 @@
                 utterance.rate = 0.9;
                 utterance.pitch = 1.0;
                 utterance.volume = 1.0;
-                // اختيار أقوى صوت offline متوفر (مثل Google أو Microsoft)
-                speechSynthesis.getVoices().then(voices => {
+
+                // دالة لاختيار الصوت وتشغيل النطق
+                const setVoiceAndSpeak = () => {
+                    const voices = speechSynthesis.getVoices(); // جلب القائمة (غير متزامنة)
                     const highQualityVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Microsoft') || v.name === 'Samantha') || voices[0];
-                    utterance.voice = highQualityVoice;
+                    if (highQualityVoice) {
+                        utterance.voice = highQualityVoice;
+                    } else {
+                        console.warn('لم يتم العثور على صوت عالي الجودة. استخدام الصوت الافتراضي.');
+                    }
                     speechSynthesis.speak(utterance);
-                });
+                };
+
+                // التحقق إذا كانت الأصوات محملة بالفعل
+                let voices = speechSynthesis.getVoices();
+                if (voices.length > 0) {
+                    setVoiceAndSpeak(); // إذا كانت محملة، شغل فوراً
+                } else {
+                    // إذا لم تكن محملة، انتظر حدث voiceschanged
+                    speechSynthesis.onvoiceschanged = () => {
+                        setVoiceAndSpeak();
+                        speechSynthesis.onvoiceschanged = null; // إزالة المستمع بعد الاستخدام
+                    };
+                }
             } else {
-                alert('متصفحك لا يدعم النطق offline. جرب Chrome.');
+                alert('متصفحك لا يدعم النطق offline. جرب Chrome أو متصفح يدعم SpeechSynthesis. تفاصيل الخطأ: speechSynthesis غير مدعوم في هذا المتصفح. تأكد من أنك تستخدم متصفح حديث مثل Chrome أو Edge.');
             }
         }
 
         speakBtn.addEventListener('click', () => speakText(fullEnglish.textContent));
 
-        // تحميل أصوات offline مسبقاً
-        if ('speechSynthesis' in window) speechSynthesis.getVoices();
+        // تحميل أصوات offline مسبقاً (يحفز التحميل)
+        if ('speechSynthesis' in window) {
+            speechSynthesis.getVoices(); // يحفز التحميل
+        }
 
         // ميزة الكاميرا والفلاش
         cameraBtn.addEventListener('click', async () => {
@@ -465,14 +485,17 @@
                     torchButton.style.display = 'block';
                 }
             } catch (error) {
-                alert('خطأ في الوصول إلى الكاميرا: ' + error.message);
+                alert('خطأ في الوصول إلى الكاميرا: ' + error.message + '\nتفاصيل: قد يكون الإذن غير ممنوح، أو الكاميرا غير متوفرة. تأكد من منح الإذن للمتصفح وجرب إعادة التحميل.');
             }
         });
 
         function toggleTorch() {
             const track = stream.getVideoTracks()[0];
             torchOn = !torchOn;
-            track.applyConstraints({ advanced: [{ torch: torchOn }] }).catch(console.error);
+            track.applyConstraints({ advanced: [{ torch: torchOn }] }).catch(error => {
+                console.error(error);
+                alert('خطأ في تبديل الفلاش: ' + error.message + '\nتفاصيل: قد لا يدعم جهازك الفلاش، أو هناك مشكلة في الاتصال. جرب إعادة تشغيل الكاميرا.');
+            });
         }
 
         captureBtn.addEventListener('click', async () => {
@@ -505,24 +528,30 @@
                     const reader = new FileReader();
                     reader.onload = async (event) => await processImage(event.target.result);
                     reader.readAsDataURL(file);
+                } else {
+                    alert('خطأ في اختيار الصورة: لم يتم اختيار ملف. جرب مرة أخرى.');
                 }
             };
             input.click();
         });
 
-        // معالجة الصورة مع Tesseract OCR (offline فقط، كما طلبت - مع تصحيح لمنع undefined)
+        // معالجة الصورة مع Tesseract OCR (offline فقط، مع تصحيح لمنع undefined ومسارات صحيحة)
         async function processImage(imageDataUrl) {
             try {
                 loadingMessage.textContent = 'جاري استخراج النصوص (OCR)...';
                 if (typeof Tesseract === 'undefined') {
-                    throw new Error('Tesseract غير محمل. تأكد من وجود tesseract.min.js ومجلدات tesseract/ و tessdata/ مع الملفات: tesseract-core.wasm, worker.min.js, eng.traineddata. جرب إعادة تحميل الصفحة أو فحص الـconsole.');
+                    throw new Error('Tesseract غير محمل. تأكد من وجود tesseract.min.js في المجلد الرئيسي، ومجلد tesseract/ يحتوي على worker.min.js و tesseract-core.wasm، ومجلد tessdata/ يحتوي على eng.traineddata. جرب إعادة تحميل الصفحة أو فحص الـconsole للتفاصيل.');
                 }
+
+                // إنشاء الـworker مع مسارات صحيحة (corePath هو المجلد، ليس الملف)
                 const worker = await Tesseract.createWorker({
-                    langPath: './tessdata/',
-                    corePath: './tesseract/tesseract-core.wasm',
-                    workerPath: './tesseract/worker.min.js',
-                    logger: m => console.log(m) // للتصحيح
+                    langPath: './tessdata/',               // مسار ملفات اللغة (eng.traineddata)
+                    corePath: './tesseract/',              // مسار المجلد الذي يحتوي على tesseract-core.wasm (لا تضع اسم الملف هنا)
+                    workerPath: './tesseract/worker.min.js', // مسار الـworker
+                    workerBlobURL: false,                  // ضروري لـGitHub Pages أو بيئات مشابهة
+                    logger: m => console.log(m)            // للتصحيح
                 });
+
                 await worker.load();
                 await worker.loadLanguage('eng');
                 await worker.initialize('eng');
@@ -534,6 +563,10 @@
                 });
                 const { data: { text } } = await worker.recognize(imageDataUrl);
                 await worker.terminate();
+
+                if (!text || text.trim() === '') {
+                    throw new Error('لم يتم استخراج أي نص من الصورة. تأكد من أن الصورة تحتوي على نصوص واضحة بالإنجليزية، أو جرب صورة أخرى ذات جودة أعلى.');
+                }
 
                 const extractedPhrases = text.split(/\n|\.|\,|\;/).filter(phrase => phrase.trim() !== '');
                 loadingMessage.textContent = 'جاري البحث في القاموس...';
@@ -554,7 +587,8 @@
                 loading.style.display = 'none';
             } catch (error) {
                 loading.style.display = 'none';
-                alert('خطأ في OCR: ' + error.message + '\nتأكد من الملفات في المجلدات الصحيحة أو جرب صورة أخرى. إذا استمر الخطأ، فحص الـconsole للتفاصيل.');
+                console.error('خطأ في OCR:', error);
+                alert('خطأ في معالجة الصورة (OCR): ' + error.message + '\nتفاصيل محتملة:\n- إذا كان الخطأ متعلقًا بـ"NetworkError" أو "importScripts": تأكد من أن مسار corePath صحيح (./tesseract/) وأن الملف tesseract-core.wasm موجود داخل المجلد. قد يكون هناك مشكلة في التحميل من GitHub Pages؛ جرب مسح الذاكرة المؤقتة (Ctrl+Shift+R) أو تحقق من هيكل الملفات.\n- إذا كان "Tesseract undefined": تأكد من تحميل tesseract.min.js بشكل صحيح.\n- إذا كان "No text extracted": الصورة قد لا تحتوي على نصوص، أو الجودة منخفضة. جرب صورة أخرى أو تحقق من إعدادات الكاميرا.\nفحص الـconsole لمزيد من التفاصيل.');
             }
         }
 
